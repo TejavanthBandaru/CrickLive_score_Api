@@ -1,12 +1,27 @@
+from flask import Flask, jsonify
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, jsonify
 
 app = Flask(__name__)
 
+# ✅ Homepage route (avoids 404 error on Render)
+@app.route('/')
+def home():
+    return '✅ Cricbuzz Live Score API is running! Visit /api/cricbuzz/live-scores to get scores.'
+
+# ✅ Live scores API route
+@app.route('/api/cricbuzz/live-scores', methods=['GET'])
+def live_scores():
+    try:
+        data = get_cricbuzz_scores()
+        return jsonify({"status": "success", "data": data})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# ✅ Web scraping logic
 def get_cricbuzz_scores():
     url = "https://www.cricbuzz.com/cricket-match/live-scores"
-    headers = {"User-Agent": "Mozilla/5.0"}  # Prevents being blocked
+    headers = {"User-Agent": "Mozilla/5.0"}
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, 'lxml')
 
@@ -28,28 +43,16 @@ def get_cricbuzz_scores():
         except:
             match['Team2_score'] = ''
 
-        # Go inside match details page
-        try:
-            match_url = "https://www.cricbuzz.com/" + data.find('a')['href']
-            sub_response = requests.get(match_url, headers=headers)
-            sub_soup = BeautifulSoup(sub_response.content, 'lxml')
-            match['description'] = ' '.join(sub_soup.text.split())
-        except:
-            match['description'] = 'Details not available.'
+        # Details from individual match page
+        match_url = "https://www.cricbuzz.com/" + data.find('a')['href']
+        sub_response = requests.get(match_url, headers=headers)
+        sub_soup = BeautifulSoup(sub_response.content, 'lxml')
+        match['description'] = ' '.join(sub_soup.text.split())
 
         matches.append(match)
 
     return matches
 
-@app.route('/api/cricbuzz/live-scores', methods=['GET'])
-def live_scores():
-    try:
-        data = get_cricbuzz_scores()
-        return jsonify({"status": "success", "data": data})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-# ✅ DO NOT use `app.run()` on Render — Gunicorn will run it
-# So use this:
-if __name__ == 'API_Cricket_Score':
-    app = app
+# ✅ Run locally (ignored by Render)
+if __name__ == '__main__':
+    app.run(debug=True)
