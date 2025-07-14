@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from flask import Flask, jsonify
 
 app = Flask(__name__)
+
 def get_cricbuzz_scores():
     url = "https://www.cricbuzz.com/cricket-match/live-scores"
     headers = {"User-Agent": "Mozilla/5.0"}  # Prevents being blocked
@@ -28,10 +29,13 @@ def get_cricbuzz_scores():
             match['Team2_score'] = ''
 
         # Go inside match details page
-        match_url = "https://www.cricbuzz.com/" + data.find('a')['href']
-        sub_response = requests.get(match_url, headers=headers)
-        sub_soup = BeautifulSoup(sub_response.content, 'lxml')
-        match['description'] = ' '.join(sub_soup.text.split())
+        try:
+            match_url = "https://www.cricbuzz.com/" + data.find('a')['href']
+            sub_response = requests.get(match_url, headers=headers)
+            sub_soup = BeautifulSoup(sub_response.content, 'lxml')
+            match['description'] = ' '.join(sub_soup.text.split())
+        except:
+            match['description'] = 'Details not available.'
 
         matches.append(match)
 
@@ -45,6 +49,7 @@ def live_scores():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
-if __name__ == '__main__':
-    app.run(debug=True)
+# ✅ DO NOT use `app.run()` on Render — Gunicorn will run it
+# So use this:
+if __name__ == 'API_Cricket_Score':
+    app = app
